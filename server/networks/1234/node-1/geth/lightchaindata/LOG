@@ -1,0 +1,6 @@
+=============== May 22, 2018 (NZST) ===============
+15:17:19.671538 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:17:19.672087 db@open opening
+15:17:19.672680 version@stat F·[] S·0B[] Sc·[]
+15:17:19.672982 db@janitor F·2 G·0
+15:17:19.673005 db@open done T·905.953µs

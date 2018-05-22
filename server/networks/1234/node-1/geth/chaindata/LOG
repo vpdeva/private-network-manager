@@ -1,0 +1,18 @@
+=============== May 22, 2018 (NZST) ===============
+15:17:19.669038 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:17:19.669605 db@open opening
+15:17:19.670024 version@stat F·[] S·0B[] Sc·[]
+15:17:19.670383 db@janitor F·2 G·0
+15:17:19.670425 db@open done T·794.566µs
+=============== May 22, 2018 (NZST) ===============
+15:17:19.814757 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:17:19.814989 version@stat F·[] S·0B[] Sc·[]
+15:17:19.815023 db@open opening
+15:17:19.815086 journal@recovery F·1
+15:17:19.818892 journal@recovery recovering @1
+15:17:19.819732 memdb@flush created L0@2 N·32 S·1KiB "\x03\x95\x06..\v_I,v14":"\xe6\x1eV..;o\x84,v18"
+15:17:19.823500 version@stat F·[1] S·1KiB[1KiB] Sc·[0.25]
+15:17:19.824665 db@janitor F·3 G·0
+15:17:19.824706 db@open done T·9.660654ms
+15:17:47.394492 db@close closing
+15:17:47.394826 db@close done T·331.562µs

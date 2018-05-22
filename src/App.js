@@ -1,0 +1,267 @@
+import React, { Component } from 'react'
+import getWeb3 from './utils/getWeb3'
+import axios from 'axios';
+
+import { Form, Button, Radio, Segment, Tab } from 'semantic-ui-react';
+
+import './css/oswald.css'
+import './css/open-sans.css'
+import './css/pure-min.css'
+import './App.css'
+
+import NetworkStatusTable from './components/NetworkStatusTable';
+import TerminalLogs from './components/TerminalLogs';
+
+let i = 1;
+
+class App extends Component {
+  constructor(props) {
+    super(props)
+
+    this.state = {
+      name: '',
+      networkId: '',
+      nodeCount: '',
+      consensus: 'pow',
+      genesisData: '',
+      getRequestMessage: '',
+      postRequestMessage: '',
+      createNetworkMessage: '',
+      blockTime: '',
+      networks: {},
+      tableData: [],
+    }
+    this.handleChange = this.handleChange.bind(this);
+    this.handleRadioSelection = this.handleRadioSelection.bind(this);
+    this.createNetwork = this.createNetwork.bind(this);
+    this.exampleGetRequest = this.exampleGetRequest.bind(this);
+    this.examplePostRequest = this.examplePostRequest.bind(this);
+    this.updateNetworksStatus = this.updateNetworksStatus.bind(this);
+    this.deleteNetwork = this.deleteNetwork.bind(this);
+    this.startSocket = this.startSocket.bind(this);
+  }
+
+  handleChange(e, data) {
+    this.setState({ [e.target.name]: e.target.value });
+  }
+
+  handleRadioSelection(e, data) {
+    this.setState({ consensus: data.value });
+  }
+
+  componentWillMount() {
+    // Get network provider and web3 instance.
+    // See utils/getWeb3 for more info.
+
+    getWeb3
+      .then(results => {
+        this.setState({
+          web3: results.web3
+        })
+
+        // Instantiate contract once web3 provided.
+      })
+      .catch(() => {
+        console.log('Error finding web3.')
+      })
+  }
+
+
+  componentDidMount() {
+    this.updateNetworksStatus();
+    setInterval(this.updateNetworksStatus, 3000);
+    this.startSocket();
+  }
+
+  startSocket() {
+    this.socket = new WebSocket('ws://localhost:8080');
+
+    this.socket.addEventListener('open', (event) => {
+      this.setState({ connectionStatus: `Connected to server logs: ` });
+    });
+
+    this.socket.addEventListener('message', (message) => {
+
+      setTimeout(() => {
+        const text = message.data.split('[32m').join(' ').split('[0m').join(' ');
+        const row = i;
+        i += 1;
+
+        this.setState({ tableData: [{ row, text }].concat(this.state.tableData) });
+      }, 0);
+    });
+  }
+
+  updateNetworksStatus() {
+    axios.get('/get_state')
+      .then(response => this.setState({ networks: response.data }))
+      .catch(err => console.log(err));
+  }
+
+  createNetwork() {
+
+    console.log('Create network');
+    this.setState({ createNetworkMessage: '' });
+    const { networks, name, networkId, consensus, nodeCount, genesisData, blockTime } = this.state;
+    const additionalData = consensus === 'pow' ? genesisData : blockTime;
+    const params = { name, networkId, consensus, nodeCount, additionalData };
+
+    axios.post(`/create_geth`, params)
+      .then(response => this.setState({ createNetworkMessage: response.data }))
+      .catch(err => this.setState({ createNetworkMessage: err.toString() }));
+
+    networks[name] = {
+      "name": name, "networkId": networkId, "consensus": consensus,
+      "nodeCount": nodeCount, "ipAddress": "",
+      status: "stopped"
+    }
+
+    this.setState({ networks: networks })
+
+    axios.post('/save_state', { networks })
+      .then(response => this.setState({ postRequestMessage: response.data }))
+      .catch(err => this.setState({ postRequestMessage: err.toString() }));
+  }
+
+  deleteNetwork(id, name, consensus) {
+    const genesis_name = `${name}_${consensus}`
+    const { networks } = this.state;
+    axios.post(`/geth/network/${id}`, {genesis_name})
+    .then(response => {
+      delete networks[name];
+      this.setState({networks, postRequestMessage: `${name} has been deleted!`})
+
+      axios.post('/save_state', { networks })
+        .then(response => this.setState({ postRequestMessage: response.data }))
+        .catch(err => this.setState({ postRequestMessage: err.toString() }));
+    });
+  }
+
+  exampleGetRequest() {
+    axios.get('/getExample')
+      .then(response => this.setState({ getRequestMessage: response.data }))
+      .catch(err => this.setState({ getRequestMessage: err.toString() }));
+  }
+
+  examplePostRequest() {
+
+    const { name, networkId, nodeCount, consensus } = this.state;
+
+    const params = {
+      name,
+      networkId,
+      nodeCount,
+      consensus,
+    }
+
+    axios.post('/postExample', params)
+      .then(response => this.setState({ postRequestMessage: response.data }))
+      .catch(err => this.setState({ postRequestMessage: err.toString() }));
+  }
+
+  render() {
+    const { consensus } = this.state;
+
+
+    const panes = [
+      {
+        menuItem: 'Available Networks', render: () => <Tab.Pane attached={false}>
+          <NetworkStatusTable networks={this.state.networks} updateNetworksStatus={this.updateNetworksStatus} deleteNetwork={this.deleteNetwork}/>
+          <Segment>
+            <TerminalLogs tableData={this.state.tableData} />
+          </Segment>
+        </Tab.Pane>
+      },
+      {
+        menuItem: 'Create a New Network', render: () => <Tab.Pane attached={false}>
+          <h2>Create a New Network: Input Network Parameters</h2>
+          <Form>
+            <Form.Group inline>
+              <label>Ethereum Client</label>
+              <Form.Field control={Radio} label="Geth" name="client" value="geth" checked />
+              <Form.Field control={Radio} label="Parity" name="client" value="geth" disabled />
+              <Form.Field control={Radio} label="Quorum" name="client" value="geth" disabled />
+            </Form.Group>
+            <Form.Input
+              label="Name"
+              value={this.state.name}
+              name="name"
+              onChange={this.handleChange}
+              placeholder="Enter new network name"
+            />
+            <Form.Input
+              label="Network ID"
+              placeholder="Enter network id"
+              value={this.state.networkId}
+              name="networkId"
+              onChange={this.handleChange}
+            />
+            <Form.Input
+              label="Number of Nodes"
+              placeholder="Enter number of nodes"
+              value={this.state.nodeCount}
+              name="nodeCount"
+              onChange={this.handleChange}
+            />
+            <Form.Group inline>
+              <label>Consensus Methodology</label>
+              <Form.Field control={Radio} label="Proof of Work" name="consensus" value="pow" checked={consensus === 'pow'} onChange={this.handleRadioSelection} />
+              <Form.Field control={Radio} label="Proof of Authority" name="consensus" value="poa" checked={consensus === 'poa'} onChange={this.handleRadioSelection} />
+              <Form.Field control={Radio} label="Proof of Stake" name="consensus" value="pos" onChange={this.handleRadioSelection} disabled />
+            </Form.Group>
+            {consensus === 'poa' && (
+              <Form.Input
+                label="Block time in seconds"
+                placeholder="Default = 15"
+                value={this.state.blockTime}
+                name="blockTime"
+                onChange={this.handleChange}
+              />
+            )}
+            {consensus === 'pow' && (<Form.Input
+              label="Genesis data: input hex"
+              placeholder="Enter data to be included in genesis file"
+              value={this.state.genesisData}
+              name="genesisData"
+              onChange={this.handleChange}
+            />)}
+            <Button onClick={this.createNetwork}>Create new private network</Button>
+            {this.state.createNetworkMessage}
+          </Form>
+          <Segment>
+            <TerminalLogs tableData={this.state.tableData} />
+          </Segment>
+        </Tab.Pane>
+      },
+      {
+        menuItem: 'Terminal Logs', render: () => <Tab.Pane attached={false}>
+          <Segment>
+            <TerminalLogs tableData={this.state.tableData} />
+          </Segment>
+        </Tab.Pane>
+      },
+    ]
+
+    return (
+      <div className="App">
+        <nav className="navbar pure-menu pure-menu-horizontal">
+          <a href="#" className="pure-menu-heading pure-menu-link">Vishnu Devarajan</a>
+        </nav>
+
+        <main className="container">
+          <div className="pure-g">
+            <div className="pure-u-1-1">
+              <h1>Private Network Manager</h1>
+              <p>#CADhackDXB</p>
+
+              <Tab menu={{ secondary: true, pointing: true }} panes={panes} />
+
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+}
+
+export default App

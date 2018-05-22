@@ -1,0 +1,1 @@
+{"Vish":{"name":"Vish","networkId":"1234","consensus":"pow","nodeCount":"2","ipAddress":"","status":"stopped"}}
